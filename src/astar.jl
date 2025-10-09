@@ -1,5 +1,4 @@
 # notations taken from https://en.wikipedia.org/wiki/A*_search_algorithm
-# binary heap taken from https://www3.cs.stonybrook.edu/~rezaul/papers/TR-07-54.pdf
 
 struct AstarHeapStorage{W<:Real,H<:BinaryHeap}
     parents::Vector{Int}
