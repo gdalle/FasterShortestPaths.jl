@@ -1,77 +1,37 @@
 # notations taken from https://en.wikipedia.org/wiki/A*_search_algorithm
 
-struct AstarHeapStorage{W<:Real,H<:BinaryHeap}
-    parents::Vector{Int}
-    dists::Vector{W}
-    heap::H
-end
-
-struct AstarQueueStorage{W<:Real,Q<:PriorityQueue}
-    parents::Vector{Int}
-    dists::Vector{W}
-    queue::Q
-end
-
 struct AstarNodeCost{W}
     g::W
     h::W
 end
 
 @inline cost_estimate(c::AstarNodeCost) = c.g + c.h
-@inline cost_estimate(c::Pair{Int,AstarNodeCost{W}}) where {W} = cost_estimate(last(c))
+@inline cost_estimate(c::Pair{Int, AstarNodeCost{W}}) where {W} = cost_estimate(last(c))
 
-function AstarHeapStorage(g::SimpleWeightedDiGraph)
+function AstarHeapStorage(g::CompatibleGraph)
     W = eltype(weights(g))
     parents = zeros(Int, nv(g))
     dists = fill(typemax(W), nv(g))
-    heap = BinaryHeap(Base.By(cost_estimate), Pair{Int,AstarNodeCost{W}}[])
-    return AstarHeapStorage(parents, dists, heap)
+    heap = BinaryHeap(Base.By(cost_estimate), Pair{Int, AstarNodeCost{W}}[])
+    return HeapStorage(parents, dists, heap)
 end
 
-function AstarQueueStorage(g::SimpleWeightedDiGraph)
+function AstarQueueStorage(g::CompatibleGraph)
     W = eltype(weights(g))
     parents = zeros(Int, nv(g))
     dists = fill(typemax(W), nv(g))
-    queue = PriorityQueue{Int,AstarNodeCost{W}}(Base.By(cost_estimate))
-    return AstarQueueStorage(parents, dists, queue)
-end
-
-function reset!(storage::AstarHeapStorage{W}) where {W}
-    (; heap, parents, dists) = storage
-    empty!(heap)
-    fill!(parents, 0)
-    fill!(dists, typemax(W))
-    return nothing
-end
-
-function reset!(storage::AstarQueueStorage{W}) where {W}
-    (; queue, parents, dists) = storage
-    empty!(queue)
-    fill!(parents, 0)
-    fill!(dists, typemax(W))
-    return nothing
-end
-
-function reconstruct_path(storage, dep::Integer, arr::Integer)
-    (; parents) = storage
-    path = Int[]
-    v = arr
-    while v != dep
-        push!(path, v)
-        v = parents[v]
-        v == 0 && error("Invalid path reconstruction")
-    end
-    push!(path, dep)
-    return reverse(path)
+    queue = PriorityQueue{Int, AstarNodeCost{W}}(Base.By(cost_estimate))
+    sizehint!(queue, nv(g))
+    return QueueStorage(parents, dists, queue)
 end
 
 function custom_astar!(
-    storage::AstarHeapStorage{W},
-    g::SimpleWeightedDiGraph{Int,W},
-    dep::Int,
-    arr::Int,
-    heuristic::Vector{W}=fill(zero(W), nv(g)),
-) where {W}
+        storage::HeapStorage{W},
+        g::CompatibleGraph{Int, W},
+        dep::Int,
+        arr::Int,
+        heuristic::Vector{W} = fill(zero(W), nv(g)),
+    ) where {W}
     reset!(storage)
     (; heap, parents, dists) = storage
     # Add source
@@ -102,15 +62,16 @@ function custom_astar!(
             end
         end
     end
+    return
 end
 
 function custom_astar!(
-    storage::AstarQueueStorage{W},
-    g::SimpleWeightedDiGraph{Int,W},
-    dep::Int,
-    arr::Int,
-    heuristic::Vector{W}=fill(zero(W), nv(g)),
-) where {W}
+        storage::QueueStorage{W},
+        g::CompatibleGraph{Int, W},
+        dep::Int,
+        arr::Int,
+        heuristic::Vector{W} = fill(zero(W), nv(g)),
+    ) where {W}
     reset!(storage)
     (; queue, parents, dists) = storage
     # Add source
@@ -146,4 +107,5 @@ function custom_astar!(
             end
         end
     end
+    return
 end
